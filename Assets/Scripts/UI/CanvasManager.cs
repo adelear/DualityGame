@@ -48,6 +48,12 @@ public class CanvasManager : MonoBehaviour
     {
         asm = GetComponent<AudioManager>();
 
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnScoreValueChanged.AddListener(UpdateScoreText);
+            GameManager.Instance.OnLifeValueChanged.AddListener(UpdateDeathText);
+        }
+
         if (masterSlider)
         {
             masterSlider.onValueChanged.AddListener((value) => OnSliderValueChanged(value, "MasterVol"));
@@ -61,11 +67,6 @@ public class CanvasManager : MonoBehaviour
         if (sfxSlider)
         {
             sfxSlider.onValueChanged.AddListener((value) => OnSliderValueChanged(value, "SFXVol")); 
-        }
-
-        if (menuButtons.Length > 0)
-        {
-            SelectButton(menuButtons[currentButtonIndex]);
         }
 
         InitializeButton(startButton, StartGame);
@@ -111,51 +112,18 @@ public class CanvasManager : MonoBehaviour
 
     void Update()
     {
-        if (SceneManager.GetActiveScene().name == "MainMenu")
-        {
-            if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
-            {
-                NavigateButtons(-1);
-            }
-            else if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
-            {
-                NavigateButtons(1);
-            }
-
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                menuButtons[currentButtonIndex].onClick.Invoke();
-            }
-        }
-
         if (!pauseMenu) return;
-        if (pauseMenu.activeSelf)
-        {
-            if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
-            {
-                NavigateButtons(-1);
-            }
-            else if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
-            {
-                NavigateButtons(1);
-            }
 
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                menuButtons[currentButtonIndex].onClick.Invoke();
-            }
-        } 
-
-        if (Input.GetKeyDown(KeyCode.Return)) 
+        if (Input.GetKeyDown(KeyCode.Escape))
         {
             pauseMenu.SetActive(!pauseMenu.activeSelf);
-            if (settingsMenu) settingsMenu.SetActive(false); 
+            if (settingsMenu) settingsMenu.SetActive(false);
 
 
             if (pauseMenu.activeSelf)
             {
-                Time.timeScale = 0f; 
-                GameManager.Instance.SwitchState(GameManager.GameState.PAUSE);   
+                Time.timeScale = 0f;
+                GameManager.Instance.SwitchState(GameManager.GameState.PAUSE);
                 asm.PlayOneShot(pauseSound, false);
                 pauseMenu.SetActive(true);
             }
@@ -167,35 +135,12 @@ public class CanvasManager : MonoBehaviour
 
         }
     }
-
-    void NavigateButtons(int direction)
-    {
-        DeselectButton(menuButtons[currentButtonIndex]);
-        currentButtonIndex = (currentButtonIndex + direction + menuButtons.Length) % menuButtons.Length;
-        SelectButton(menuButtons[currentButtonIndex]);
-    }
-
-
-    void SelectButton(Button button)
-    {
-        EventSystem.current.SetSelectedGameObject(button.gameObject);
-        var colors = button.colors;
-        button.image.color = colors.highlightedColor;
-    }
-
-    void DeselectButton(Button button)
-    {
-        menuButtons[currentButtonIndex].OnDeselect(null); 
-        var colors = button.colors;
-        button.image.color = colors.normalColor;
-    }
-
     void ShowSettingsMenu()
     {
         if (mainMenu) mainMenu.SetActive(false);
         if (pauseMenu) pauseMenu.SetActive(false);
         settingsMenu.SetActive(true);
-        if (masterSlider) 
+        if (masterSlider)
         {
             float value;
             audioMixer.GetFloat("MasterVol", out value);
@@ -210,7 +155,7 @@ public class CanvasManager : MonoBehaviour
         {
             float value;
             audioMixer.GetFloat("MusicVol", out value);
-            musicSlider.value = value + 80; 
+            musicSlider.value = value + 80;
         }
 
         if (sfxSlider)
@@ -253,11 +198,20 @@ public class CanvasManager : MonoBehaviour
         entry.eventID = EventTriggerType.PointerEnter;
         entry.callback.AddListener((eventData) => action.Invoke());
         trigger.triggers.Add(entry);
-    } 
+    }
 
     void PlayButtonSound()
     {
         asm.PlayOneShot(buttonSound, false);
+    }
+
+    void OnDestroy()
+    {
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnScoreValueChanged.RemoveListener(UpdateScoreText);
+            GameManager.Instance.OnLifeValueChanged.RemoveListener(UpdateDeathText);
+        }
     }
 
     void Quit() 
